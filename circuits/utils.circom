@@ -14,16 +14,16 @@ template MerkleTreeInclusionProof(DEPTH) {
 
     signal mux[DEPTH][2];
     signal levelHashes[DEPTH + 1];
-    
+
     levelHashes[0] <== leaf;
     for (var i = 0; i < DEPTH; i++) {
         pathIndex[i] * (pathIndex[i] - 1) === 0;
 
         mux[i] <== MultiMux1(2)(
             [
-                [levelHashes[i], pathElements[i]], 
+                [levelHashes[i], pathElements[i]],
                 [pathElements[i], levelHashes[i]]
-            ], 
+            ],
             pathIndex[i]
         );
 
@@ -42,4 +42,22 @@ template RangeCheck(LIMIT_BIT_SIZE) {
     signal bitCheck[LIMIT_BIT_SIZE] <== Num2Bits(LIMIT_BIT_SIZE)(messageId);
     signal rangeCheck <== LessThan(LIMIT_BIT_SIZE)([messageId, limit]);
     rangeCheck === 1;
+}
+
+template ConditionalRangeCheck(LIMIT_BIT_SIZE) {
+    assert(LIMIT_BIT_SIZE < 253);
+
+    signal input messageId;
+    signal input limit;
+    signal input condition;
+
+    condition * (condition - 1) === 0;
+
+    signal activeMessageId <== messageId * condition;
+
+    signal bitCheck[LIMIT_BIT_SIZE] <== Num2Bits(LIMIT_BIT_SIZE)(activeMessageId);
+    signal rangeCheck <== LessThan(LIMIT_BIT_SIZE)([activeMessageId, limit]);
+
+    signal checkResult <== rangeCheck * condition;
+    checkResult === condition;
 }
