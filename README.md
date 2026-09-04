@@ -5,21 +5,22 @@
 
 <div align="center">
 
-*The project was audited by Veridise, yAcademy fellows and internally.*
+_The project was audited by Veridise, yAcademy fellows and internally._
 
 </div>
 
-___
+---
 
 ## What's RLN?
 
-RLN is a zero-knowledge gadget that enables spam 
+RLN is a zero-knowledge gadget that enables spam
 prevention in anonymous environments.
 
 The core parts of RLN are:
-* zk-circuits in Circom (this repo);
-* [registry smart-contract](https://github.com/Rate-Limiting-Nullifier/rln-contract);
-* set of libraries to build app with RLN ([rlnjs](https://github.com/Rate-Limiting-Nullifier/rlnjs), [zerokit](https://github.com/vacp2p/zerokit)).
+
+- zk-circuits in Circom (this repo);
+- [registry smart-contract](https://github.com/Rate-Limiting-Nullifier/rln-contract);
+- set of libraries to build app with RLN ([rlnjs](https://github.com/Rate-Limiting-Nullifier/rlnjs), [zerokit](https://github.com/vacp2p/zerokit)).
 
 ---
 

@@ -10,11 +10,11 @@ cd ../build
 echo -e "\033[36m----------------------\033[0m"
 echo -e "\033[36mSETTING UP ENVIRONMENT\033[0m"
 echo -e "\033[36m----------------------\033[0m"
-if [ -f ./powersOfTau28_hez_final_14.ptau ]; then
-    echo -e "\033[33mpowersOfTau28_hez_final_14.ptau already exists. Skipping.\033[0m"
+if [ -f ./ppot_0080_14.ptau ]; then
+    echo -e "\033[33mppot_0080_14.ptau already exists. Skipping.\033[0m"
 else
-    echo -e "\033[33mDownloading powersOfTau28_hez_final_14.ptau\033[0m"
-    wget https://hermez.s3-eu-west-1.amazonaws.com/powersOfTau28_hez_final_14.ptau
+    echo -e "\033[33mDownloading ppot_0080_14.ptau\033[0m"
+    wget https://pse-trusted-setup-ppot.s3.eu-central-1.amazonaws.com/pot28_0080/ppot_0080_14.ptau
 fi
 
 circuit_dir="../circuits"
@@ -22,16 +22,16 @@ circuit_path=""
 circuit_type=""
 zkeydir="../zkeyFiles"
 
-if [ "$1" = "rln" ]; then
-    echo -e "\033[32mUsing RLN circuit\033[0m"
-    circuit_name="rln"
-elif [ "$1" = "withdraw" ]; then
-    echo -e "\033[32mUsing Withdraw circuit\033[0m"
-    circuit_name="withdraw"
-else
-    echo -e "\033[33mUnrecognized argument"
-    exit 1
-fi
+case "$1" in
+    rln_single|rln_multi|withdraw)
+        echo -e "\033[32mUsing $1 circuit\033[0m"
+        circuit_name="$1"
+        ;;
+    *)
+        echo -e "\033[33mUnrecognized argument: expected rln_single, rln_multi or withdraw\033[0m"
+        exit 1
+        ;;
+esac
 circuit_path="$circuit_dir/$circuit_name.circom"
 zkeypath="$zkeydir/$circuit_name"
 
@@ -55,7 +55,7 @@ npx snarkjs r1cs export json $circuit_name.r1cs $circuit_name.r1cs.json
 
 echo -e "\033[36mRunning groth16 trusted setup\033[0m"
 
-npx snarkjs groth16 setup $circuit_name.r1cs powersOfTau28_hez_final_14.ptau setup/circuit_00000.zkey
+npx snarkjs groth16 setup $circuit_name.r1cs ppot_0080_14.ptau setup/circuit_00000.zkey
 
 npx snarkjs zkey contribute setup/circuit_00000.zkey setup/circuit_00001.zkey --name="First contribution" -v -e="Random entropy"
 npx snarkjs zkey contribute setup/circuit_00001.zkey setup/circuit_00002.zkey --name="Second contribution" -v -e="Another random entropy"
