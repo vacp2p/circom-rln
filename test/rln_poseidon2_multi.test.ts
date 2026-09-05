@@ -1,9 +1,15 @@
 import * as path from "path";
 import assert from "assert";
 const tester = require("circom_tester").wasm;
+const snarkjs = require("snarkjs");
 import { getSignal, getSignalArray } from "./utils";
 
-const circuitPath = path.join(__dirname, "..", "circuits", "rln_poseidon2_multi.circom");
+const circuitPath = path.join(
+  __dirname,
+  "..",
+  "circuits",
+  "rln_poseidon2_multi.circom",
+);
 
 // ffjavascript has no types so leave circuit with untyped
 type CircuitT = any;
@@ -71,17 +77,112 @@ describe("Test rln_poseidon2_multi.circom", function () {
         externalNullifier: 3n,
         selectorUsed: [1, 1, 1, 1],
       },
-      true
+      true,
     );
     await circuit.checkConstraints(witness);
 
     assert.equal(await getSignal(circuit, witness, "root"), expectedRoot);
     for (let i = 0; i < 4; i++) {
-      assert.equal(await getSignalArray(circuit, witness, "y", i), expectedY[i]);
+      assert.equal(
+        await getSignalArray(circuit, witness, "y", i),
+        expectedY[i],
+      );
       assert.equal(
         await getSignalArray(circuit, witness, "nullifier", i),
-        expectedNullifier[i]
+        expectedNullifier[i],
       );
     }
+  });
+
+  describe("Performance Tests", () => {
+    it("Should measure zkSNARK proof generation time with 4 message burns", async function () {
+      this.timeout(600000);
+
+      const inputs = {
+        identitySecret: 1n,
+        userMessageLimit: 100n,
+        messageId: [1n, 2n, 3n, 4n],
+        pathElements,
+        identityPathIndex: new Array(20).fill(0),
+        x: 2n,
+        externalNullifier: 3n,
+        selectorUsed: [1, 1, 1, 1],
+      };
+
+      const numRuns = 20;
+      const witnessTimes: number[] = [];
+      const proofTimes: number[] = [];
+
+      for (let i = 0; i < numRuns; i++) {
+        const witnessStart = performance.now();
+        const _ = await circuit.calculateWitness(inputs, true);
+        const witnessTime = performance.now() - witnessStart;
+        witnessTimes.push(witnessTime);
+
+        const proofStart = performance.now();
+        const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+          inputs,
+          path.join(
+            __dirname,
+            "..",
+            "build",
+            "rln_poseidon2_multi_js",
+            "rln_poseidon2_multi.wasm",
+          ),
+          path.join(
+            __dirname,
+            "..",
+            "zkeyFiles",
+            "rln_poseidon2_multi",
+            "final.zkey",
+          ),
+        );
+        const proofTime = performance.now() - proofStart;
+        proofTimes.push(proofTime);
+
+        if (i === 0) {
+          const vKey = require(
+            path.join(
+              __dirname,
+              "..",
+              "zkeyFiles",
+              "rln_poseidon2_multi",
+              "verification_key.json",
+            ),
+          );
+          const isValid = await snarkjs.groth16.verify(
+            vKey,
+            publicSignals,
+            proof,
+          );
+          assert.equal(isValid, true, "Proof should be valid");
+        }
+      }
+
+      const avgWitnessTime =
+        witnessTimes.reduce((a, b) => a + b, 0) / witnessTimes.length;
+      const avgProofTime =
+        proofTimes.reduce((a, b) => a + b, 0) / proofTimes.length;
+      const minWitnessTime = Math.min(...witnessTimes);
+      const maxWitnessTime = Math.max(...witnessTimes);
+      const minProofTime = Math.min(...proofTimes);
+      const maxProofTime = Math.max(...proofTimes);
+
+      console.log(`\n      === 4 Message Burns - Witness Generation Times ===`);
+      console.log(`      - Average: ${avgWitnessTime.toFixed(2)}ms`);
+      console.log(`      - Min: ${minWitnessTime.toFixed(2)}ms`);
+      console.log(`      - Max: ${maxWitnessTime.toFixed(2)}ms`);
+      console.log(
+        `\n      === 4 Message Burns - Full Proof Generation Times ===`,
+      );
+      console.log(`      - Average: ${avgProofTime.toFixed(2)}ms`);
+      console.log(`      - Min: ${minProofTime.toFixed(2)}ms`);
+      console.log(`      - Max: ${maxProofTime.toFixed(2)}ms`);
+      console.log(
+        `      - Average proof-only time: ${(
+          avgProofTime - avgWitnessTime
+        ).toFixed(2)}ms\n`,
+      );
+    });
   });
 });
