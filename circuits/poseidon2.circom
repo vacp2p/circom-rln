@@ -5,8 +5,10 @@ pragma circom 2.1.0;
 // Permutation semantics follow the HorizenLabs reference implementation:
 // https://github.com/HorizenLabs/poseidon2/blob/main/plain_implementations/src/poseidon2/poseidon2.rs
 // Constants: ./poseidon2_constants.circom (HorizenLabs set, machine-generated - see its header).
-// The one-shot hash keeps the circomlib Poseidon layout: state [0, in_0, .., in_{n-1}],
-// one permutation, output state[0].
+// The one-shot hash uses the compression layout of the Logos ecosystem
+// (the Nomos compression mode and the compress function of
+// https://github.com/logos-storage/rust-poseidon-bn254-pure):
+// state [in_0, .., in_{n-1}, 0] with the capacity zero last, one permutation, output state[0].
 
 include "./poseidon2_constants.circom";
 
@@ -146,9 +148,11 @@ template Poseidon2Permutation(t) {
     }
 }
 
-// The one-shot Poseidon2 hash of nInputs field elements, mirroring the circomlib Poseidon
-// interface: the state is [0, inputs..] with t = nInputs + 1, the permutation runs once and
-// state[0] is returned.
+// The one-shot Poseidon2 hash of nInputs field elements, using the compression layout of
+// the Logos ecosystem (the Nomos compression mode and the compress function of
+// https://github.com/logos-storage/rust-poseidon-bn254-pure).
+// The state is [inputs.., 0] with t = nInputs + 1 and the capacity zero last;
+// the permutation runs once and state[0] is returned.
 template Poseidon2(nInputs) {
     assert(nInputs >= 1 && nInputs <= 3);
 
@@ -156,10 +160,10 @@ template Poseidon2(nInputs) {
     signal output out;
 
     component perm = Poseidon2Permutation(nInputs + 1);
-    perm.inp[0] <== 0;
     for (var i = 0; i < nInputs; i++) {
-        perm.inp[i + 1] <== inputs[i];
+        perm.inp[i] <== inputs[i];
     }
+    perm.inp[nInputs] <== 0;
 
     out <== perm.out[0];
 }
