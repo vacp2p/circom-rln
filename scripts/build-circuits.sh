@@ -23,12 +23,12 @@ circuit_type=""
 zkeydir="../zkeyFiles"
 
 case "$1" in
-    rln_single|rln_multi|withdraw)
+    rln_single|rln_multi|rln_poseidon2_single|rln_poseidon2_multi|withdraw)
         echo -e "\033[32mUsing $1 circuit\033[0m"
         circuit_name="$1"
         ;;
     *)
-        echo -e "\033[33mUnrecognized argument: expected rln_single, rln_multi or withdraw\033[0m"
+        echo -e "\033[33mUnrecognized argument: expected rln_single, rln_multi, rln_poseidon2_single, rln_poseidon2_multi or withdraw\033[0m"
         exit 1
         ;;
 esac
