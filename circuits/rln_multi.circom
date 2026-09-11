@@ -3,6 +3,9 @@ pragma circom 2.1.0;
 include "./utils.circom";
 include "../node_modules/circomlib/circuits/poseidon.circom";
 
+// The RLN circuit for up to MAX_OUT messages in one proof: one Shamir share and
+// nullifier per active selector slot, with the inactive slots skipped by the
+// conditional range check and their outputs masked to zero.
 template RLN(DEPTH, LIMIT_BIT_SIZE, MAX_OUT) {
     // Private signals
     signal input identitySecret;

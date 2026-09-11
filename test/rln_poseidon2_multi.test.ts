@@ -94,6 +94,106 @@ describe("Test rln_poseidon2_multi.circom", function () {
     }
   });
 
+  // The selector/masking checks are copied circuit logic, so they get their own coverage
+  // (mirroring the rln_multi suite). The root is a circuit output, not validated
+  // in-circuit, so the fixture path elements serve every case below.
+  const fixtureInputs = (
+    messageId: bigint[],
+    selectorUsed: number[],
+  ): Record<string, unknown> => ({
+    identitySecret: 1n,
+    userMessageLimit: 100n,
+    messageId,
+    pathElements,
+    identityPathIndex: new Array(20).fill(0),
+    x: 2n,
+    externalNullifier: 3n,
+    selectorUsed,
+  });
+
+  it("Should fail if an active messageId is not in range [0, userMessageLimit-1]", async () => {
+    await assert.rejects(async () => {
+      await circuit.calculateWitness(
+        fixtureInputs([100n, 0n, 0n, 0n], [1, 0, 0, 0]),
+        true,
+      );
+    }, /Error: Assert Failed/);
+  });
+
+  it("Should fail if no selector is active", async () => {
+    await assert.rejects(async () => {
+      await circuit.calculateWitness(
+        fixtureInputs([1n, 2n, 3n, 4n], [0, 0, 0, 0]),
+        true,
+      );
+    }, /Error: Assert Failed/);
+  });
+
+  it("Should fail if two active slots share a messageId", async () => {
+    await assert.rejects(async () => {
+      await circuit.calculateWitness(
+        fixtureInputs([1n, 1n, 0n, 0n], [1, 1, 0, 0]),
+        true,
+      );
+    }, /Error: Assert Failed/);
+  });
+
+  it("Should fail if selectorUsed contains a non-binary value", async () => {
+    await assert.rejects(async () => {
+      await circuit.calculateWitness(
+        fixtureInputs([1n, 2n, 3n, 4n], [1, 2, 0, 0]),
+        true,
+      );
+    }, /Error: Assert Failed/);
+  });
+
+  it("Should burn non-contiguous slots [1,0,1,0] and mask the interleaved inactive ones", async () => {
+    // Active slots 0 and 2 carry the fixture messageIds 1 and 3, so their outputs must
+    // equal the fixture values while the interleaved inactive slots mask to zero.
+    const witness = await circuit.calculateWitness(
+      fixtureInputs([1n, 0n, 3n, 0n], [1, 0, 1, 0]),
+      true,
+    );
+    await circuit.checkConstraints(witness);
+
+    assert.equal(await getSignal(circuit, witness, "root"), expectedRoot);
+    for (const i of [0, 2]) {
+      assert.equal(await getSignalArray(circuit, witness, "y", i), expectedY[i]);
+      assert.equal(
+        await getSignalArray(circuit, witness, "nullifier", i),
+        expectedNullifier[i],
+      );
+    }
+    for (const i of [1, 3]) {
+      assert.equal(await getSignalArray(circuit, witness, "y", i), 0n);
+      assert.equal(await getSignalArray(circuit, witness, "nullifier", i), 0n);
+    }
+  });
+
+  it("Should skip validation of inactive messageIds and mask their outputs", async () => {
+    // Slots 2 and 3 carry out-of-range messageIds but are inactive: the witness must
+    // still generate, the active slots must produce the fixture outputs (messageIds 1
+    // and 2), and the inactive outputs must be masked to zero.
+    const witness = await circuit.calculateWitness(
+      fixtureInputs([1n, 2n, 999n, 9999n], [1, 1, 0, 0]),
+      true,
+    );
+    await circuit.checkConstraints(witness);
+
+    assert.equal(await getSignal(circuit, witness, "root"), expectedRoot);
+    for (let i = 0; i < 2; i++) {
+      assert.equal(await getSignalArray(circuit, witness, "y", i), expectedY[i]);
+      assert.equal(
+        await getSignalArray(circuit, witness, "nullifier", i),
+        expectedNullifier[i],
+      );
+    }
+    for (let i = 2; i < 4; i++) {
+      assert.equal(await getSignalArray(circuit, witness, "y", i), 0n);
+      assert.equal(await getSignalArray(circuit, witness, "nullifier", i), 0n);
+    }
+  });
+
   describe("Performance Tests", () => {
     it("Should measure zkSNARK proof generation time with 4 message burns", async function () {
       this.timeout(600000);

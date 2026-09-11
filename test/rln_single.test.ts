@@ -74,7 +74,45 @@ describe("Test rln_single.circom", function () {
     assert.equal(outputNullifier, nullifier);
   });
 
-  it("should fail to generate witness if messageId is not in range [0, userMessageLimit-1]", async function () {
+  it("Should compute the root for a member at a non-zero index (path index bits set)", async () => {
+    // Every other test proves membership at index 0, where all path index bits are 0 and
+    // the hash order sibling/node never flips; index 3 sets the two lowest bits and
+    // exercises the flipped order in MerkleTreeInclusionProof.
+    const x = genFieldElement();
+    const externalNullifier = genFieldElement();
+    const identitySecret = genFieldElement();
+    const userMessageLimit = BigInt(10);
+    const messageId = BigInt(0);
+    const leaf = calculateLeaf(identitySecret, userMessageLimit);
+    const otherLeaves = [genFieldElement(), genFieldElement(), genFieldElement()];
+    const merkleProof = genMerkleProof([...otherLeaves, leaf], 3);
+
+    const inputs = {
+      identitySecret,
+      userMessageLimit,
+      messageId,
+      pathElements: merkleProof.siblings,
+      identityPathIndex: merkleProof.pathIndices,
+      x,
+      externalNullifier,
+    };
+
+    const witness: bigint[] = await circuit.calculateWitness(inputs, true);
+    await circuit.checkConstraints(witness);
+
+    const { y, nullifier } = calculateOutput(
+      identitySecret,
+      x,
+      externalNullifier,
+      messageId,
+    );
+
+    assert.equal(await getSignal(circuit, witness, "root"), merkleProof.root);
+    assert.equal(await getSignal(circuit, witness, "y"), y);
+    assert.equal(await getSignal(circuit, witness, "nullifier"), nullifier);
+  });
+
+  it("Should fail to generate witness if messageId is not in range [0, userMessageLimit-1]", async function () {
     // Public inputs
     const x = genFieldElement();
     const externalNullifier = genFieldElement();

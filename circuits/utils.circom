@@ -6,6 +6,8 @@ include "../node_modules/circomlib/circuits/bitify.circom";
 include "../node_modules/circomlib/circuits/comparators.circom";
 include "./poseidon2.circom";
 
+// Computes the Merkle root from a leaf and its authentication path; each path index bit
+// selects the hash order (0 = node left of sibling, 1 = right) and is constrained binary.
 template MerkleTreeInclusionProof(DEPTH) {
     signal input leaf;
     signal input pathIndex[DEPTH];
@@ -63,6 +65,7 @@ template MerkleTreeInclusionProofPoseidon2(DEPTH) {
     root <== levelHashes[DEPTH];
 }
 
+// Asserts messageId < limit, with messageId proven to fit in LIMIT_BIT_SIZE bits.
 template RangeCheck(LIMIT_BIT_SIZE) {
     assert(LIMIT_BIT_SIZE < 253);
 
@@ -74,6 +77,8 @@ template RangeCheck(LIMIT_BIT_SIZE) {
     rangeCheck === 1;
 }
 
+// The range check above gated by a binary condition: enforced when condition = 1, a
+// no-op when condition = 0 (the checked value is masked to zero first).
 template ConditionalRangeCheck(LIMIT_BIT_SIZE) {
     assert(LIMIT_BIT_SIZE < 253);
 
