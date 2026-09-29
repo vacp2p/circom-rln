@@ -57,14 +57,20 @@ reference vectors for every arity, and both withdraw circuits.
 
 ## Static analysis
 
+Runs [circomspect](https://github.com/trailofbits/circomspect) on every circuit.
+
 ```bash
 ./scripts/circomspect.sh
 ```
 
-Runs [circomspect](https://github.com/trailofbits/circomspect) on every circuit.
+Runs [Picus](https://github.com/Veridise/Picus) on every main circuit (needs Docker).
 
 ```bash
 ./scripts/picus.sh
 ```
 
-Runs [Picus](https://github.com/Veridise/Picus) on every main circuit (needs Docker).
+Runs [zkFuzz](https://github.com/Koukyosyumei/zkFuzz) on every main circuit.
+
+```bash
+./scripts/zkfuzz.sh
+```
