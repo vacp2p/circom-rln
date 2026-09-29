@@ -1,26 +1,35 @@
-# This workflow test if circuits can be built and the tests pass.
-
-name: Test
-
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
   pull_request:
-    branches: ["main"]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore:
+      - "**.md"
+
+name: CI
 
 jobs:
   test:
+    name: Test - circuits
+    # skip tests on draft PRs
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && !github.event.pull_request.draft)
     runs-on: ubuntu-latest
-
+    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Checkout sources
+        uses: actions/checkout@v7
+      - name: Install node
+        uses: actions/setup-node@v4
         with:
+          # The circom_tester test suite requires node <= 18
           node-version: 18
           cache: "npm"
-      - name: Cache circom
+      - name: Setup circom cache
         id: cache-circom
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/circom
           # Since the version of circom is specified in `scripts/install-circom.sh`,
@@ -28,8 +37,9 @@ jobs:
           key: ${{ runner.os }}-circom-${{ hashFiles('./scripts/install-circom.sh') }}
       - name: Install circom if not cached
         run: ./scripts/install-circom.sh
-      - run: npm ci
+      - name: Install dependencies
+        run: npm ci
       - name: Build all circuits
         run: npm run build
-      - name: Run the tests
+      - name: Test all circuits
         run: npm test
