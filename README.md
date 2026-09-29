@@ -53,7 +53,7 @@ npm test
 ```
 
 Runs the `ts-mocha` suite in `test/`: witness fixtures for every RLN circuit, official Poseidon2
-reference vectors for every arity, and the withdraw circuit.
+reference vectors for every arity, and both withdraw circuits.
 
 ## Static analysis
 

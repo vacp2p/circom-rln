@@ -30,7 +30,7 @@ if ! docker image inspect "$PICUS_IMAGE" >/dev/null 2>&1; then
     docker build -t "$PICUS_IMAGE" scripts/picus
 fi
 
-for circuit in withdraw rln_single rln_multi rln_poseidon2_single rln_poseidon2_multi; do
+for circuit in withdraw withdraw_poseidon2 rln_single rln_multi rln_poseidon2_single rln_poseidon2_multi; do
     echo -e "\033[36m----------------------\033[0m"
     echo -e "\033[36mPICUS $circuit\033[0m"
     echo -e "\033[36m----------------------\033[0m"
