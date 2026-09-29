@@ -14,6 +14,9 @@ const circuitPath = path.join(
 // ffjavascript has no types so leave circuit with untyped
 type CircuitT = any;
 
+const SNARK_FIELD_SIZE =
+  21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+
 // Witness fixture computed with zerokit's Poseidon2 implementation (POSEIDON2_ROUND_PARAMS,
 // HorizenLabs constant set): identitySecret = 1, userMessageLimit = 100,
 // messageId = [1, 2, 3, 4], selectorUsed = [1, 1, 1, 1], x = 2, externalNullifier = 3,
@@ -118,6 +121,26 @@ describe("Test rln_poseidon2_multi.circom", function () {
         true,
       );
     }, /Error: Assert Failed/);
+  });
+
+  it("Should accept the last allowed messageId (userMessageLimit - 1) in an active slot", async () => {
+    const witness = await circuit.calculateWitness(
+      fixtureInputs([0n, 0n, 99n, 0n], [0, 0, 1, 0]),
+      true,
+    );
+    await circuit.checkConstraints(witness);
+  });
+
+  // See rln_poseidon2_single: field-wrapped messageIds must not pass the conditional range check.
+  it("Should reject field-wrapped messageIds (p - 1, p - userMessageLimit) in an active slot", async () => {
+    for (const messageId of [SNARK_FIELD_SIZE - 1n, SNARK_FIELD_SIZE - 100n]) {
+      await assert.rejects(async () => {
+        await circuit.calculateWitness(
+          fixtureInputs([1n, messageId, 0n, 0n], [1, 1, 0, 0]),
+          true,
+        );
+      }, /Error: Assert Failed/);
+    }
   });
 
   it("Should fail if no selector is active", async () => {

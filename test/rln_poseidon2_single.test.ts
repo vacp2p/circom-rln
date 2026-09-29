@@ -14,6 +14,9 @@ const circuitPath = path.join(
 // ffjavascript has no types so leave circuit with untyped
 type CircuitT = any;
 
+const SNARK_FIELD_SIZE =
+  21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+
 // Witness fixture computed with zerokit's Poseidon2 implementation (POSEIDON2_ROUND_PARAMS,
 // HorizenLabs constant set): identitySecret = 1, userMessageLimit = 100, messageId = 1,
 // x = 2, externalNullifier = 3, member at index 0 of a depth-20 tree with zero default
@@ -122,6 +125,32 @@ describe("Test rln_poseidon2_single.circom", function () {
           },
           true,
         );
+      }, /Error: Assert Failed/);
+    }
+  });
+
+  const singleInputs = (messageId: bigint) => ({
+    identitySecret: 1n,
+    userMessageLimit: 100n,
+    messageId,
+    pathElements,
+    identityPathIndex: new Array(20).fill(0),
+    x: 2n,
+    externalNullifier: 3n,
+  });
+
+  it("Should accept the last allowed messageId (userMessageLimit - 1)", async () => {
+    const witness = await circuit.calculateWitness(singleInputs(99n), true);
+    await circuit.checkConstraints(witness);
+  });
+
+  // Without the Num2Bits bound on messageId, LessThan(16) accepts field-wrapped values
+  // such as p - j (they alias to small 17-bit numbers), each giving a fresh nullifier:
+  // a rate-limit bypass that Picus cannot see because the circuit stays deterministic.
+  it("Should reject field-wrapped messageIds (p - 1, p - userMessageLimit)", async () => {
+    for (const messageId of [SNARK_FIELD_SIZE - 1n, SNARK_FIELD_SIZE - 100n]) {
+      await assert.rejects(async () => {
+        await circuit.calculateWitness(singleInputs(messageId), true);
       }, /Error: Assert Failed/);
     }
   });
