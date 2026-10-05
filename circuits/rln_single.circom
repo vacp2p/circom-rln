@@ -3,6 +3,9 @@ pragma circom 2.1.0;
 include "./utils.circom";
 include "../node_modules/circomlib/circuits/poseidon.circom";
 
+// The RLN circuit for one message: proves Merkle membership of the rate commitment,
+// range-checks the messageId against the user's limit and outputs the Shamir share
+// (x, y) plus the nullifier used for double-signaling detection.
 template RLN(DEPTH, LIMIT_BIT_SIZE) {
     // Private signals
     signal input identitySecret;

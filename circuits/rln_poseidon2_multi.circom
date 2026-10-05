@@ -1,12 +1,12 @@
 pragma circom 2.1.0;
 
 include "./utils.circom";
-include "../node_modules/circomlib/circuits/poseidon.circom";
+include "./poseidon2.circom";
 
-// The RLN circuit for up to MAX_OUT messages in one proof: one Shamir share and
-// nullifier per active selector slot, with the inactive slots skipped by the
-// conditional range check and their outputs masked to zero.
-template RLN(DEPTH, LIMIT_BIT_SIZE, MAX_OUT) {
+// The RLN circuit of rln_multi.circom with every hash swapped to Poseidon2; the selector
+// logic, the range checks, the Shamir share computation and the public signal layout are
+// unchanged.
+template RLNPoseidon2Multi(DEPTH, LIMIT_BIT_SIZE, MAX_OUT) {
     // Private signals
     signal input identitySecret;
     signal input userMessageLimit;
@@ -24,11 +24,11 @@ template RLN(DEPTH, LIMIT_BIT_SIZE, MAX_OUT) {
     signal output root;
     signal output nullifier[MAX_OUT];
 
-    signal identityCommitment <== Poseidon(1)([identitySecret]);
-    signal rateCommitment <== Poseidon(2)([identityCommitment, userMessageLimit]);
+    signal identityCommitment <== Poseidon2(1)([identitySecret]);
+    signal rateCommitment <== Poseidon2(2)([identityCommitment, userMessageLimit]);
 
     // Membership check
-    root <== MerkleTreeInclusionProof(DEPTH)(rateCommitment, identityPathIndex, pathElements);
+    root <== MerkleTreeInclusionProofPoseidon2(DEPTH)(rateCommitment, identityPathIndex, pathElements);
 
     // At least one active messageId
     var selectorSumVar = 0;
@@ -56,12 +56,12 @@ template RLN(DEPTH, LIMIT_BIT_SIZE, MAX_OUT) {
     signal yUnmasked[MAX_OUT];
     signal nullifierUnmasked[MAX_OUT];
     for (var i = 0; i < MAX_OUT; i++) {
-        a1[i] <== Poseidon(3)([identitySecret, externalNullifier, messageId[i]]);
+        a1[i] <== Poseidon2(3)([identitySecret, externalNullifier, messageId[i]]);
         yUnmasked[i] <== identitySecret + a1[i] * x;
-        nullifierUnmasked[i] <== Poseidon(1)([a1[i]]);
+        nullifierUnmasked[i] <== Poseidon2(1)([a1[i]]);
         y[i] <== selectorUsed[i] * yUnmasked[i];
         nullifier[i] <== selectorUsed[i] * nullifierUnmasked[i];
     }
 }
 
-component main { public [x, externalNullifier, selectorUsed] } = RLN(20, 16, 4);
+component main { public [x, externalNullifier, selectorUsed] } = RLNPoseidon2Multi(20, 16, 4);
